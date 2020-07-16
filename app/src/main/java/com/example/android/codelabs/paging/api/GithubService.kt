@@ -30,16 +30,18 @@ const val IN_QUALIFIER = "in:name,description"
 /**
  * Github API communication setup via Retrofit.
  */
-interface GithubService {
+interface GithubService {                                 // The data retrieved from
     /**
      * Get repos ordered by stars.
      */
     @GET("search/repositories?sort=stars")
     suspend fun searchRepos(
+            // data source will be specific to a certain query,
+            // so we need to make sure we're also passing the query information to this fun
             @Query("q") query: String,
-            @Query("page") page: Int,
+            @Query("page") page: Int,               // paging key
             @Query("per_page") itemsPerPage: Int
-    ): RepoSearchResponse
+    ): RepoSearchResponse                                 // including the type of data loaded `Repo`
 
     companion object {
         private const val BASE_URL = "https://api.github.com/"

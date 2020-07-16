@@ -83,6 +83,8 @@ class GithubRepository(private val service: GithubService) {
 
         val apiQuery = query + IN_QUALIFIER
         try {
+            // Loads the data from GithubService,
+            // ensuring that multiple requests aren't triggered at the same time.
             val response = service.searchRepos(apiQuery, lastRequestedPage, NETWORK_PAGE_SIZE)
             Log.d("GithubRepository", "response $response")
             val repos = response.items ?: emptyList()
