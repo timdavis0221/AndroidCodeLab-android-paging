@@ -17,20 +17,22 @@
 package com.example.android.codelabs.paging.data
 
 import android.util.Log
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
+import androidx.paging.PagingData
 import com.example.android.codelabs.paging.api.GithubService
 import com.example.android.codelabs.paging.api.IN_QUALIFIER
 import com.example.android.codelabs.paging.model.Repo
 import com.example.android.codelabs.paging.model.RepoSearchResult
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.channels.ConflatedBroadcastChannel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.asFlow
 import retrofit2.HttpException
 import java.io.IOException
 
-// GitHub page API is 1 based: https://developer.github.com/v3/#pagination
-private const val GITHUB_STARTING_PAGE_INDEX = 1
+/*// GitHub page API is 1 based: https://developer.github.com/v3/#pagination
+private const val GITHUB_STARTING_PAGE_INDEX = 1*/
 
 /**
  * Repository class that works with local and remote data sources.
@@ -38,7 +40,7 @@ private const val GITHUB_STARTING_PAGE_INDEX = 1
 @ExperimentalCoroutinesApi
 class GithubRepository(private val service: GithubService) {
 
-    // keep the list of all results received
+   /* // keep the list of all results received
     private val inMemoryCache = mutableListOf<Repo>()
 
     // keep channel of results. The channel allows us to broadcast updates so
@@ -49,22 +51,47 @@ class GithubRepository(private val service: GithubService) {
     private var lastRequestedPage = GITHUB_STARTING_PAGE_INDEX
 
     // avoid triggering multiple requests in the same time
-    private var isRequestInProgress = false
+    private var isRequestInProgress = false*/
+
+    companion object {
+        private const val NETWORK_PAGE_SIZE = 50
+    }
 
     /**
      * Search repositories whose names match the query, exposed as a stream of data that will emit
      * every time we get more data from the network.
      */
-    suspend fun getSearchResultStream(query: String): Flow<RepoSearchResult> {
-        Log.d("GithubRepository", "New query: $query")
+    /*suspend*/ fun getSearchResultStream(query: String): Flow<PagingData<Repo>> {
+
+        /*Log.d("GithubRepository", "New query: $query")
         lastRequestedPage = 1
         inMemoryCache.clear()
         requestAndSaveData(query)
 
-        return searchResults.asFlow()
+        return searchResults.asFlow()*/
+
+        return Pager(
+                // 1. PagingConfig: pageSize is mandatory parameter
+                config = PagingConfig(
+                        pageSize = NETWORK_PAGE_SIZE,
+                        enablePlaceholders = false
+                ),
+                // 2. A function that defines how to create the PagingSource
+                pagingSourceFactory = {
+                    GithubPagingSource(service, query)
+                }
+        ).flow
+
     }
 
-    suspend fun requestMore(query: String) {
+    // Paging 3.0 does a lot of things for us:
+    //  - Handles in-memory cache.
+    //  - Requests data when the user is close to the end of the list.
+    //
+    // This means that everything else in our GithubRepository can be removed,
+    // except getSearchResultStream and NETWORK_PAGE_SIZE
+
+    /*suspend fun requestMore(query: String) {
         if (isRequestInProgress) return
         val successful = requestAndSaveData(query)
         if (successful) {
@@ -108,9 +135,6 @@ class GithubRepository(private val service: GithubService) {
             it.name.contains(query, true) ||
                     (it.description != null && it.description.contains(query, true))
         }.sortedWith(compareByDescending<Repo> { it.stars }.thenBy { it.name })
-    }
+    }*/
 
-    companion object {
-        private const val NETWORK_PAGE_SIZE = 50
-    }
 }
