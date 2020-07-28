@@ -17,11 +17,15 @@
 package com.example.android.codelabs.paging.ui
 
 import androidx.lifecycle.*
+import androidx.paging.PagingData
+import androidx.paging.cachedIn
 import com.example.android.codelabs.paging.data.GithubRepository
+import com.example.android.codelabs.paging.model.Repo
 import com.example.android.codelabs.paging.model.RepoSearchResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 
 /**
@@ -31,13 +35,21 @@ import kotlinx.coroutines.launch
 @ExperimentalCoroutinesApi
 class SearchRepositoriesViewModel(private val repository: GithubRepository) : ViewModel() {
 
-    companion object {
+   /* companion object {
         private const val VISIBLE_THRESHOLD = 5
-    }
+    }*/
 
-    private val queryLiveData = MutableLiveData<String>()
+    private var currentQueryString: String? = null
+
+    private var currentSearchResult: Flow<PagingData<Repo>>? = null
+
+    // Instead of using a LiveData object for each new query, we can just use a String, see below code in searchRepo()
+//    private val queryLiveData = MutableLiveData<String>()
+
+    // in-memory cache for result searches that survives configuration changes
     val repoResult: LiveData<RepoSearchResult> = queryLiveData.switchMap { queryString ->
         liveData {
+            // With Paging 3.0 we don't need to convert our Flow to LiveData anymore.
             val repos = repository.getSearchResultStream(queryString).asLiveData(Dispatchers.Main)
             emitSource(repos)
         }
@@ -46,11 +58,32 @@ class SearchRepositoriesViewModel(private val repository: GithubRepository) : Vi
     /**
      * Search a repository based on a query string.
      */
-    fun searchRepo(queryString: String) {
-        queryLiveData.postValue(queryString)
+    fun searchRepo(queryString: String): Flow<PagingData<Repo>> {
+
+        var lastResult = currentSearchResult
+
+        if (queryString == currentQueryString && lastResult != null) {
+            return lastResult
+        }
+        // This will help us ensure that whenever we get a new search query that is the same as the current query
+        currentQueryString = queryString
+
+        // Flow<PagingData> has a handy cachedIn() method that allows us to cache the content of a Flow<PagingData>
+        // in a CoroutineScope. Since we're in a ViewModel
+        //
+        // If you're doing any operations on the Flow, like map or filter,
+        // make sure you call cachedIn after you execute these operations
+        // to ensure you don't need to trigger them again.
+        var newResult: Flow<PagingData<Repo>> =
+                repository.getSearchResultStream(queryString).cachedIn(viewModelScope)
+
+        currentSearchResult = newResult
+        return newResult
+//        queryLiveData.postValue(queryString)
     }
 
-    fun listScrolled(visibleItemCount: Int, lastVisibleItemPosition: Int, totalItemCount: Int) {
+    // Paging library will handle this
+   /* fun listScrolled(visibleItemCount: Int, lastVisibleItemPosition: Int, totalItemCount: Int) {
         if (visibleItemCount + lastVisibleItemPosition + VISIBLE_THRESHOLD >= totalItemCount) {
             val immutableQuery = queryLiveData.value
             if (immutableQuery != null) {
@@ -59,5 +92,5 @@ class SearchRepositoriesViewModel(private val repository: GithubRepository) : Vi
                 }
             }
         }
-    }
+    }*/
 }
