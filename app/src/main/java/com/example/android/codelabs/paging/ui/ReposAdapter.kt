@@ -17,14 +17,14 @@
 package com.example.android.codelabs.paging.ui
 
 import android.view.ViewGroup
+import androidx.paging.PagingDataAdapter
 import androidx.recyclerview.widget.DiffUtil
-import androidx.recyclerview.widget.ListAdapter
 import com.example.android.codelabs.paging.model.Repo
 
 /**
  * Adapter for the list of repositories.
  */
-class ReposAdapter : ListAdapter<Repo, androidx.recyclerview.widget.RecyclerView.ViewHolder>(REPO_COMPARATOR) {
+class ReposAdapter : PagingDataAdapter<Repo, androidx.recyclerview.widget.RecyclerView.ViewHolder>(REPO_COMPARATOR) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): androidx.recyclerview.widget.RecyclerView.ViewHolder {
         return RepoViewHolder.create(parent)

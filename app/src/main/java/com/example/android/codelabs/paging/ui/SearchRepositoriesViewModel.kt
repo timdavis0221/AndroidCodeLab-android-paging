@@ -47,13 +47,13 @@ class SearchRepositoriesViewModel(private val repository: GithubRepository) : Vi
 //    private val queryLiveData = MutableLiveData<String>()
 
     // in-memory cache for result searches that survives configuration changes
-    val repoResult: LiveData<RepoSearchResult> = queryLiveData.switchMap { queryString ->
+    /*val repoResult: LiveData<RepoSearchResult> = queryLiveData.switchMap { queryString ->
         liveData {
             // With Paging 3.0 we don't need to convert our Flow to LiveData anymore.
             val repos = repository.getSearchResultStream(queryString).asLiveData(Dispatchers.Main)
             emitSource(repos)
         }
-    }
+    }*/
 
     /**
      * Search a repository based on a query string.
