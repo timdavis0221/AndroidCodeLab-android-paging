@@ -18,20 +18,17 @@ package com.example.android.codelabs.paging.ui
 
 import android.os.Bundle
 import android.view.KeyEvent
-import android.view.View
 import android.view.inputmethod.EditorInfo
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
-import androidx.lifecycle.*
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.lifecycleScope
+import androidx.paging.ExperimentalPagingApi
 import androidx.recyclerview.widget.DividerItemDecoration
-import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
-import androidx.recyclerview.widget.RecyclerView.OnScrollListener
 import com.example.android.codelabs.paging.Injection
 import com.example.android.codelabs.paging.databinding.ActivitySearchRepositoriesBinding
-import com.example.android.codelabs.paging.model.RepoSearchResult
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
@@ -44,7 +41,12 @@ class SearchRepositoriesActivity : AppCompatActivity() {
 
     private var searchJob: Job? = null
 
+    /**
+     *  We also want to ensure that whenever the user searches for a new query
+     *  the previous query is cancelled and hold a reference to a new Job
+     */
     private fun search(query: String) {
+        searchJob?.cancel()
         searchJob = lifecycleScope.launch {
             viewModel.searchRepo(query).collectLatest {
                 value -> adapter.submitData(value)
@@ -65,13 +67,14 @@ class SearchRepositoriesActivity : AppCompatActivity() {
         // add dividers between RecyclerView's row items
         val decoration = DividerItemDecoration(this, DividerItemDecoration.VERTICAL)
         binding.list.addItemDecoration(decoration)
-        setupScrollListener()
+//        setupScrollListener()
 
         initAdapter()
         val query = savedInstanceState?.getString(LAST_SEARCH_QUERY) ?: DEFAULT_QUERY
-        if (viewModel.repoResult.value == null) {
+       /* if (viewModel.repoResult.value == null) {
             viewModel.searchRepo(query)
-        }
+        }*/
+        search(query)
         initSearch(query)
     }
 
@@ -82,7 +85,7 @@ class SearchRepositoriesActivity : AppCompatActivity() {
 
     private fun initAdapter() {
         binding.list.adapter = adapter
-        viewModel.repoResult.observe(this) { result ->
+       /* viewModel.repoResult.observe(this) { result ->
             when (result) {
                 is RepoSearchResult.Success -> {
                     showEmptyList(result.data.isEmpty())
@@ -96,7 +99,7 @@ class SearchRepositoriesActivity : AppCompatActivity() {
                     ).show()
                 }
             }
-        }
+        }*/
     }
 
     private fun initSearch(query: String) {
@@ -110,6 +113,7 @@ class SearchRepositoriesActivity : AppCompatActivity() {
                 false
             }
         }
+
         binding.searchRepo.setOnKeyListener { _, keyCode, event ->
             if (event.action == KeyEvent.ACTION_DOWN && keyCode == KeyEvent.KEYCODE_ENTER) {
                 updateRepoListFromInput()
@@ -118,18 +122,35 @@ class SearchRepositoriesActivity : AppCompatActivity() {
                 false
             }
         }
-    }
-
-    private fun updateRepoListFromInput() {
-        binding.searchRepo.text.trim().let {
-            if (it.isNotEmpty()) {
+        // instead of resetting the position on new search,
+        // we should reset the position when the list adapter is updated with the result of a new search
+        lifecycleScope.launch {
+            @OptIn(ExperimentalPagingApi::class)
+            adapter.dataRefreshFlow.collect {
                 binding.list.scrollToPosition(0)
-                viewModel.searchRepo(it.toString())
             }
         }
     }
 
-    private fun showEmptyList(show: Boolean) {
+    private fun updateRepoListFromInput() {
+        binding.searchRepo.text.trim().let { queryCriteria ->
+            {
+                if (queryCriteria.isNotEmpty()) {
+                    // we wanted to make sure that the scroll position is reset for each new search
+                    // see above method initSearch to do better
+//                    binding.list.scrollToPosition(0)
+
+
+//                viewModel.searchRepo(it.toString())
+
+                    // replace viewModel with this.searchRepo()
+                    search(queryCriteria.toString())
+                }
+            }
+        }
+    }
+
+  /*  private fun showEmptyList(show: Boolean) {
         if (show) {
             binding.emptyList.visibility = View.VISIBLE
             binding.list.visibility = View.GONE
@@ -137,11 +158,14 @@ class SearchRepositoriesActivity : AppCompatActivity() {
             binding.emptyList.visibility = View.GONE
             binding.list.visibility = View.VISIBLE
         }
-    }
+    }*/
 
-    private fun setupScrollListener() {
+    /*private fun setupScrollListener() {
         val layoutManager = binding.list.layoutManager as LinearLayoutManager
-        binding.list.addOnScrollListener(object : OnScrollListener() {
+
+        // Currently we use an OnScrollListener attached to the RecyclerView to know when to trigger more data.
+        // Now we can let the Paging library handle list scrolling for us, so remove it !
+       *//* binding.list.addOnScrollListener(object : OnScrollListener() {
             override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
                 super.onScrolled(recyclerView, dx, dy)
                 val totalItemCount = layoutManager.itemCount
@@ -150,8 +174,8 @@ class SearchRepositoriesActivity : AppCompatActivity() {
 
                 viewModel.listScrolled(visibleItemCount, lastVisibleItem, totalItemCount)
             }
-        })
-    }
+        })*//*
+    }*/
 
     companion object {
         private const val LAST_SEARCH_QUERY: String = "last_search_query"
