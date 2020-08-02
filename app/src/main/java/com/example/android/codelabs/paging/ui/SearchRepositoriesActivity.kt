@@ -56,6 +56,7 @@ class SearchRepositoriesActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // bind activity_search_repositories.xml
         binding = ActivitySearchRepositoriesBinding.inflate(layoutInflater)
         val view = binding.root
         setContentView(view)
@@ -84,7 +85,12 @@ class SearchRepositoriesActivity : AppCompatActivity() {
     }
 
     private fun initAdapter() {
-        binding.list.adapter = adapter
+        binding.list.adapter = adapter.withLoadStateHeaderAndFooter(
+                header = ReposLoadStateAdapter { adapter.retry() },
+                footer = ReposLoadStateAdapter { adapter.retry() }
+        )
+
+
        /* viewModel.repoResult.observe(this) { result ->
             when (result) {
                 is RepoSearchResult.Success -> {
