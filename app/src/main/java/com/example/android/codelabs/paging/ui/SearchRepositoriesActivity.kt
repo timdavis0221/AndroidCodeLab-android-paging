@@ -19,10 +19,13 @@ package com.example.android.codelabs.paging.ui
 import android.os.Bundle
 import android.view.KeyEvent
 import android.view.inputmethod.EditorInfo
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.view.isVisible
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.paging.ExperimentalPagingApi
+import androidx.paging.LoadState
 import androidx.recyclerview.widget.DividerItemDecoration
 import com.example.android.codelabs.paging.Injection
 import com.example.android.codelabs.paging.databinding.ActivitySearchRepositoriesBinding
@@ -58,6 +61,10 @@ class SearchRepositoriesActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         // bind activity_search_repositories.xml
         binding = ActivitySearchRepositoriesBinding.inflate(layoutInflater)
+
+        // Trigger a reload of the PagingData
+        binding.retryButton.setOnClickListener { adapter.retry() }
+
         val view = binding.root
         setContentView(view)
 
@@ -90,6 +97,28 @@ class SearchRepositoriesActivity : AppCompatActivity() {
                 footer = ReposLoadStateAdapter { adapter.retry() }
         )
 
+        adapter.addLoadStateListener { loadState ->
+            // only show the list if refresh succeeds.
+            binding.list.isVisible = loadState.source.refresh is LoadState.NotLoading
+            // show loading spinner during initial load or refresh
+            binding.progressBar.isVisible = loadState.source.refresh is LoadState.Loading
+            // show the retry button if initial load or refresh fails.
+            binding.retryButton.isVisible = loadState.source.refresh is LoadState.Error
+
+            // Toast on any error, regardless of whether it came from RemoteMediator or PagingSource
+            val errorState = loadState.source.append as? LoadState.Error
+                    ?: loadState.source.prepend as? LoadState.Error
+                    ?: loadState.append as? LoadState.Error
+                    ?: loadState.prepend as? LoadState.Error
+
+            errorState?.let {
+                Toast.makeText(
+                        this,
+                        "\"\\uD83D\\uDE28 Wooops ${it.error}\"",
+                        Toast.LENGTH_LONG
+                ).show()
+            }
+        }
 
        /* viewModel.repoResult.observe(this) { result ->
             when (result) {
