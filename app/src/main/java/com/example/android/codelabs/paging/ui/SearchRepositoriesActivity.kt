@@ -168,19 +168,17 @@ class SearchRepositoriesActivity : AppCompatActivity() {
     }
 
     private fun updateRepoListFromInput() {
-        binding.searchRepo.text.trim().let { queryCriteria ->
-            {
-                if (queryCriteria.isNotEmpty()) {
-                    // we wanted to make sure that the scroll position is reset for each new search
-                    // see above method initSearch to do better
+        binding.searchRepo.text.trim().let { str ->
+            if (str.isNotEmpty()) {
+                // we wanted to make sure that the scroll position is reset for each new search
+                // see above method initSearch to do better
 //                    binding.list.scrollToPosition(0)
 
 
 //                viewModel.searchRepo(it.toString())
 
-                    // replace viewModel with this.searchRepo()
-                    search(queryCriteria.toString())
-                }
+                // replace viewModel with this.searchRepo()
+                search(str.toString())
             }
         }
     }
