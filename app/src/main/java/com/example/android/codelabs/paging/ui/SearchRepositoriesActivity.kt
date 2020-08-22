@@ -52,7 +52,7 @@ class SearchRepositoriesActivity : AppCompatActivity() {
         searchJob?.cancel()
         searchJob = lifecycleScope.launch {
             viewModel.searchRepo(query).collectLatest {
-                value -> adapter.submitData(value)
+                /*value -> */adapter.submitData(it)
             }
         }
     }

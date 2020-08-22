@@ -19,6 +19,7 @@ package com.example.android.codelabs.paging.ui
 import androidx.lifecycle.*
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
+import androidx.paging.insertSeparators
 import com.example.android.codelabs.paging.data.GithubRepository
 import com.example.android.codelabs.paging.model.Repo
 import com.example.android.codelabs.paging.model.RepoSearchResult
@@ -26,6 +27,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 /**
@@ -41,7 +43,7 @@ class SearchRepositoriesViewModel(private val repository: GithubRepository) : Vi
 
     private var currentQueryString: String? = null
 
-    private var currentSearchResult: Flow<PagingData<Repo>>? = null
+    private var currentSearchResult: Flow<PagingData<UiModel>>? = null
 
     // Instead of using a LiveData object for each new query, we can just use a String, see below code in searchRepo()
 //    private val queryLiveData = MutableLiveData<String>()
@@ -55,10 +57,13 @@ class SearchRepositoriesViewModel(private val repository: GithubRepository) : Vi
         }
     }*/
 
+    private val UiModel.RepoItem.roundedStarCount: Int
+        get() = this.repo.stars / 10_000
+
     /**
      * Search a repository based on a query string.
      */
-    fun searchRepo(queryString: String): Flow<PagingData<Repo>> {
+    fun searchRepo(queryString: String): Flow<PagingData<UiModel>> {
 
         var lastResult = currentSearchResult
 
@@ -74,8 +79,34 @@ class SearchRepositoriesViewModel(private val repository: GithubRepository) : Vi
         // If you're doing any operations on the Flow, like map or filter,
         // make sure you call cachedIn after you execute these operations
         // to ensure you don't need to trigger them again.
-        var newResult: Flow<PagingData<Repo>> =
-                repository.getSearchResultStream(queryString).cachedIn(viewModelScope)
+        var newResult: Flow<PagingData<UiModel>> =
+                repository.getSearchResultStream(queryString)
+                        .map { pagingData -> pagingData.map { UiModel.RepoItem(it) } }
+                        .map {
+                            it.insertSeparators<UiModel.RepoItem, UiModel> { before, after ->
+                                if (after == null) {
+                                    return@insertSeparators null
+                                }
+                                if (before == null) {
+                                    return@insertSeparators UiModel.SeparatorItem(
+                                            "${after.roundedStarCount}0.000+ Stars"
+                                    )
+                                }
+
+                                if (before.roundedStarCount > after.roundedStarCount) {
+                                    if (after.roundedStarCount > 1) {
+                                        UiModel.SeparatorItem(
+                                                "${after.roundedStarCount}0.000+ Stars"
+                                        )
+                                    } else {
+                                        UiModel.SeparatorItem("< 10.000 stars")
+                                    }
+                                } else {
+                                    null
+                                }
+                            }
+                        }
+                        .cachedIn(viewModelScope)
 
         currentSearchResult = newResult
         return newResult
