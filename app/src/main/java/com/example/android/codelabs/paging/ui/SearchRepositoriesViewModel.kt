@@ -79,7 +79,7 @@ class SearchRepositoriesViewModel(private val repository: GithubRepository) : Vi
         // If you're doing any operations on the Flow, like map or filter,
         // make sure you call cachedIn after you execute these operations
         // to ensure you don't need to trigger them again.
-        var newResult: Flow<PagingData<UiModel>> =
+        val newResult: Flow<PagingData<UiModel>> =
                 repository.getSearchResultStream(queryString)
                         .map { pagingData -> pagingData.map { UiModel.RepoItem(it) } }
                         .map {
