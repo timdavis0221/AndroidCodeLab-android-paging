@@ -12,6 +12,7 @@ import com.example.android.codelabs.paging.db.RepoDatabase
 import com.example.android.codelabs.paging.model.Repo
 import retrofit2.HttpException
 import java.io.IOException
+import java.io.InvalidObjectException
 
 private const val GITHUB_STARTING_PAGE_INDEX = 1
 
@@ -33,7 +34,11 @@ class GithubRemoteMediator(
 
             }
             LoadType.APPEND -> {
-
+                val remoteKeys = getRemoteKeyForLastItem(state)
+                if (remoteKeys?.nextKey == null) {
+                    throw InvalidObjectException("Remote key should not be null dor $loadType")
+                }
+                remoteKeys.nextKey
             }
         }
 
@@ -49,6 +54,17 @@ class GithubRemoteMediator(
             MediatorResult.Error(exception)
         } catch (exception: IOException) {
             MediatorResult.Error(exception)
+        }
+    }
+
+    private suspend fun getRemoteKeyForLastItem(state: PagingState<Int, Repo>): RemoteKeys? {
+        // Get the last page that was retrieved, that contained items.
+        return state.pages.lastOrNull {
+            // From that last page, get the last item
+            it.data.isNotEmpty()
+        }?.data?.lastOrNull()?.let {
+            // Get the remote keys of the last item retrieved
+            repo -> repoDatabase.remoteKeysDao().remoteKeysRepoId(repo.id.toString())
         }
     }
 
