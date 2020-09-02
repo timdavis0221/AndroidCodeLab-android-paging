@@ -28,16 +28,28 @@ class GithubRemoteMediator(
         // Find out what page we need to load from the network, based on the LoadType
         val page = when (loadType) {
             LoadType.REFRESH -> {
-
+                getRemoteKeyClosestToCurrentPosition(state)
+                        ?.nextKey?.minus(1) ?: GITHUB_STARTING_PAGE_INDEX
             }
             LoadType.PREPEND -> {
+                // The LoadType is PREPEND so some data was loaded before,
+                // so we should have been able to get remote keys
+                // If the remoteKeys are null, then we're an invalid state and we have a bug
+                val remoteKeys = getRemoteKeyForFirstItem(state)
+                        ?: throw InvalidObjectException("Remote Key and the prevKey should not null")
 
+                remoteKeys.prevKey
+                        ?: return MediatorResult.Success(endOfPaginationReached = true)
+
+//                remoteKeys.prevKey
             }
             LoadType.APPEND -> {
                 val remoteKeys = getRemoteKeyForLastItem(state)
+
                 if (remoteKeys?.nextKey == null) {
                     throw InvalidObjectException("Remote key should not be null dor $loadType")
                 }
+
                 remoteKeys.nextKey
             }
         }
@@ -57,6 +69,25 @@ class GithubRemoteMediator(
         }
     }
 
+    private suspend fun getRemoteKeyClosestToCurrentPosition(
+            state: PagingState<Int, Repo>
+    ): RemoteKeys? {
+        return state.anchorPosition?.let {
+            position -> state.closestItemToPosition(position)?.id
+                .let { repoId ->
+                    repoDatabase.remoteKeysDao().remoteKeysRepoId(repoId.toString())
+                }
+        }
+    }
+
+    private suspend fun getRemoteKeyForFirstItem(state: PagingState<Int, Repo>): RemoteKeys? {
+        return state.pages.firstOrNull {
+            it.data.isNotEmpty()
+        }?.data?.firstOrNull()?.let {
+            repo -> repoDatabase.remoteKeysDao().remoteKeysRepoId(repo.id.toString())
+        }
+    }
+
     private suspend fun getRemoteKeyForLastItem(state: PagingState<Int, Repo>): RemoteKeys? {
         // Get the last page that was retrieved, that contained items.
         return state.pages.lastOrNull {
@@ -70,7 +101,7 @@ class GithubRemoteMediator(
 
     private suspend fun doDbOperation(
             loadType: LoadType,
-            page: Unit,
+            page: Int,
             endOfPaginationReached: Boolean,
             repos: List<Repo>
     ) {
