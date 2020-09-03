@@ -20,6 +20,7 @@ import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import com.example.android.codelabs.paging.api.GithubService
+import com.example.android.codelabs.paging.db.RepoDatabase
 import com.example.android.codelabs.paging.model.Repo
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -31,7 +32,10 @@ private const val GITHUB_STARTING_PAGE_INDEX = 1*/
  * Repository class that works with local and remote data sources.
  */
 @ExperimentalCoroutinesApi
-class GithubRepository(private val service: GithubService) {
+class GithubRepository(
+        private val service: GithubService,
+        private val repoDatabase: RepoDatabase
+) {
 
    /* // keep the list of all results received
     private val inMemoryCache = mutableListOf<Repo>()
@@ -56,6 +60,11 @@ class GithubRepository(private val service: GithubService) {
      */
     /*suspend*/ fun getSearchResultStream(query: String): Flow<PagingData<Repo>> {
 
+        val dbQuery = "%${query.replace(' ', '%')}%"
+        val pagingSourceFactory = {
+            repoDatabase.reposDao().reposByName(dbQuery)
+        }
+
         /*Log.d("GithubRepository", "New query: $query")
         lastRequestedPage = 1
         inMemoryCache.clear()
@@ -69,10 +78,16 @@ class GithubRepository(private val service: GithubService) {
                         pageSize = NETWORK_PAGE_SIZE,
                         enablePlaceholders = false
                 ),
-                // 2. A function that defines how to create the PagingSource
-                pagingSourceFactory = {
+                remoteMediator = GithubRemoteMediator(
+                        query,
+                        service,
+                        repoDatabase
+                ),
+                // 2. A function that defines how to create the PagingSource (just call API but not save data)
+                /*pagingSourceFactory = {
                     GithubPagingSource(service, query)
-                }
+                }*/
+                pagingSourceFactory = pagingSourceFactory
         ).flow
 
     }
